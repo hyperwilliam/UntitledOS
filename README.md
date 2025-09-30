@@ -1,5 +1,5 @@
 # UntitledOS
-## Well, Here's My Operating System's Source Code For Those Who Want It,
+## Well, Here's My "Operating System's" Source Code For Those Who Want It,
 
 Features That We Plan To Add
 - [x] 32 Bit Bootloader!

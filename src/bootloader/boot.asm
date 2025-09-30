@@ -1,4 +1,4 @@
-;H-OS Concept 1
+;
 [ORG 0x7c00]
 
 call Start

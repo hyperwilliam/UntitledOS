@@ -1,4 +1,3 @@
-;
 [ORG 0x7c00]
 
 call Start
@@ -24,14 +23,14 @@ Start:
    mov si, A20
    call bios_print
 
-; Load second stage (4 sectors for kernel)
+; Load second stage (4 sectors for the kernel)
 mov ah, 0x02    ; BIOS read sector function
-mov al, 4       ; Read 4 sectors for kernel
+mov al, 16       ; Read 16 sectors for the kernel
 mov ch, 0       ; Cylinder 0
 mov cl, 2       ; Sector 2 (sectors start at 1)
 mov dh, 0       ; Head 0
 mov dl, [bootdrive] ; Drive number from BIOS
-mov bx, 0x7E00  ; Load to ES:BX = 0x0000:0x7E00
+mov bx, 0x8000  ; Load to ES:BX = 0x0000:0x7E00
 
 int 0x13        ; Call BIOS
 jc error        ; Jump if error (carry flag set)
@@ -43,6 +42,12 @@ call bios_print
    lgdt [gdt_descriptor]
    mov si, GDT
    call bios_print   
+
+   mov ax, 0x4F02  ; VESA set mode function
+   mov bx, 0x4118  ; Mode number and LFB/DM flags
+   int 0x10        ; Call VESA BIOS
+   cmp ax, 0x004F
+   jne errorvesa
 
    cli
    mov eax, cr0
@@ -91,58 +96,21 @@ hang:
 error:
   mov si, DER
   call bios_print
+errorvesa:
+  mov si, VESAERROR
+  call bios_print
+
 
 [bits 32]
 protected_mode:
-  mov al, 'P'
-  mov ah, 0x0C
-  mov [0xb8280], ax
-  mov al, 'R'
-  mov ah, 0x0E
-  mov [0xb8282], ax
-  mov al, 'O'
-  mov ah, 0x0A
-  mov [0xb8284], ax
-  mov al, 'T'
-  mov ah, 0x09
-  mov [0xb8286], ax
-  mov al, 'E'
-  mov ah, 0x0B
-  mov [0xb8288], ax
-  mov al, 'C'
-  mov ah, 0x0D
-  mov [0xb828A], ax
-  mov al, 'T'
-  mov ah, 0x0F
-  mov [0xb828C], ax
-  mov al, 'E'
-  mov ah, 0x0F
-  mov [0xb828E], ax
-  mov al, 'D'
-  mov ah, 0x0F
-  mov [0xb8290], ax
-  mov al, '_'
-  mov ah, 0x0F
-  mov [0xb8292], ax
-  mov al, 'I'
-  mov ah, 0x0F
-  mov [0xb8294], ax
-  mov al, 'N'
-  mov ah, 0x0F
-  mov [0xb8296], ax
-  mov al, 'I'
-  mov ah, 0x0F
-  mov [0xb8298], ax
-  mov al, 'T'
-  mov ah, 0x0F
-  mov [0xb829A], ax
-  jmp $
+  jmp 0x7E00
 
 msg   db 'BOOT-INIT', 13, 10, 0
-A20   db '[DEBUG] A20 LINE ENABLED BY: FAST A20', 13, 10, 0
+A20   db '[DEBUG] A20 LINE ENABLED BY: FAST A20... Probably We Dont Check If It Worked...', 13, 10, 0
 GDT   db '[DEBUG] GDT LOADED, GET READY!', 13, 10, 0
 LOAD  db '[DEBUG] KERNEL LOADED, NICE...', 13, 10, 0
 DER   db 'ERROR: DISK FAILURE!', 13, 10, 0
+VESAERROR   db 'ERROR: UNSUPPORTED VESA... Probably I dont really know', 13, 10, 0
 bootdrive db 0
 bios_print:
    lodsb

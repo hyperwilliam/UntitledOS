@@ -3,9 +3,9 @@
 
 Features That We Plan To Add
 - [x] 32 Bit Bootloader!
-- [ ] Second Stage Bootloader
-- [ ] VGA Text UI
-- [ ] ~~64 Bit~~ Kernel
+- [x] VGA Text UI
+- [x] ~~64 Bit~~ Kernel
 - [ ] GUI (If You Dont Want To Use Text Based UI)
-- [x] **"FAT12"** Header (Maybe It Will Work IDK)
+- [x] **"FAT12"** Header
+- [x] Works On My Old Laptop?
 - [x] I Ran Out Of Ideas

@@ -28,6 +28,7 @@ INIT:
    mov [bootdrive], dl
    xor ax, ax
    mov ds, ax
+   mov es, ax ; recommended by redditor z3r0OS, Hope It Works!
    cld
    mov ah, 00h
    mov al, 03h

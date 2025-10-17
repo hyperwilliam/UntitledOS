@@ -17,15 +17,28 @@ protected_mode:
    mov edi, 0xB8320
    mov esi, string
    mov ah, 0x0B
-   .displaying:
+   call print32
+   mov edi, 0xB83C0
+   mov esi, string2
+   mov ah, 0x1F
+   call print32
+   mov edi, 0xB8460
+   mov esi, idt
+   mov ah, 0x0F
+   ; Now To Actually Load The IDT, Then Print The Message.
+   jmp short $
+
+
+string: db "32 Bit Mode!!!!", 0
+string2: db "NOTICE! You Are Using A Beta Version Of UntitledOS", 0
+idt: db "IDT Loaded, Very Good!", 0
+
+print32:
    lodsb
    stosw
    or al, al
-   jnz .displaying
-   jmp short $
-
-string: db "32 Bit Mode!!!!", 0
-    jmp $
+   jnz print32
+   ret
 
 
 ; GDT, Taken From UntitledOS
@@ -59,6 +72,16 @@ gdt_descriptor:
 ; Constants
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
+
+; IDT Stub
+idt_start:
+
+
+idt_end:
+
+idtr:
+    dw idt_end - idt_start - 1
+    dd idt_start
 
 
 bios_print:

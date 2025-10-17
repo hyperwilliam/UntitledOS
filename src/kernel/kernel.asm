@@ -17,16 +17,17 @@ protected_mode:
    mov edi, 0xB8320
    mov esi, string
    mov ah, 0x0B
-   .displaying:
-   lodsb
-   stosw
-   or al, al
-   jnz .displaying
+   call print32
    jmp short $
 
 string: db "32 Bit Mode!!!!", 0
-    jmp $
 
+print32:
+   lodsb
+   stosw
+   or al, al
+   jnz print32
+   ret
 
 ; GDT, Taken From UntitledOS
 gdt_start:

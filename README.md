@@ -6,6 +6,8 @@ Features That We Plan To Add
 - [x] VGA Text UI
 - [x] ~~64 Bit~~ Kernel
 - [ ] GUI (If You Dont Want To Use Text Based UI)
+- [ ] Command Line Works
+- [ ] Interrupt Descriptor Table (In Progress!)
 - [x] **"FAT12"** Header
 - [x] Works On My Old Laptop?
 - [x] I Ran Out Of Ideas

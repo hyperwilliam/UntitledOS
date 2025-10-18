@@ -25,12 +25,13 @@ protected_mode:
    mov edi, 0xB8460
    mov esi, idt
    mov ah, 0x0F
-   ; Now To Actually Load The IDT, Then Print The Message.
+   lidt [idtr]
+   call print32
    jmp short $
 
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "NOTICE! You Are Using A Beta Version Of UntitledOS", 0
+string2: db "NOTICE! You Are Using An EXPERIMENTAL Version Of UntitledOS", 0
 idt: db "IDT Loaded, Very Good!", 0
 
 print32:
@@ -99,3 +100,4 @@ msg2  db 'GDT Loaded!', 13, 10, 0
 xpos db 0
 ypos db 0
 times 4096-($-$$) db 0
+

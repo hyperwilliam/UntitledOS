@@ -1,4 +1,5 @@
-# UntitledOS
+# UntitledOS: LegacyOS
+## The Original OS Before We Overhauled It!
 ## Well, Here's My "Operating System's" Source Code For Those Who Want It,
 
 Features That We Plan To Add

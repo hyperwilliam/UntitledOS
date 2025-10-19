@@ -7,4 +7,4 @@ But If You Really Want... You Can Try It!
 Changes:
 We Made The Branch!
 
-Goal: To Create An Interrupt Descriptor Table (IDT)
+- [ ] Goal: To Create An Interrupt Descriptor Table (IDT)

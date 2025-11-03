@@ -18,9 +18,29 @@ protected_mode:
    mov esi, string
    mov ah, 0x0B
    call print32
+   mov edi, 0xB83C0
+   mov esi, string2
+   mov ah, 0x1F
+   call print32
+   mov edi, 0xB8460
+   mov esi, idt
+   mov ah, 0x0F
+   lidt [idtr]
+   call print32
+   int 0x00
    jmp short $
 
+
 string: db "32 Bit Mode!!!!", 0
+string2: db "UntitledOS Pre-Alpha Revision 3!", 0
+idt: db "IDT Loaded, Very Good!", 0
+idt2: db "Interrupts Work, Awesome!", 0
+print32:
+   lodsb
+   stosw
+   or al, al
+   jnz print32
+   ret
 
 print32:
    lodsb
@@ -60,6 +80,27 @@ gdt_descriptor:
 ; Constants
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
+
+; IDT Stub
+idt_start:
+dw isr1
+dw 0x0008
+db 0x0
+db 0x8E
+dw 0x0000
+
+idt_end:
+
+idtr:
+    dw idt_end - idt_start - 1
+    dd idt_start
+
+isr1:
+   mov edi, 0xB8500
+   mov esi, idt2
+   mov ah, 0x0F
+   call print32
+   iret
 
 
 bios_print:

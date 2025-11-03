@@ -1,6 +1,7 @@
 # UntitledOS
+## Well, Here's My "Operating System's" Source Code For Those Who Want It,
 
-Features That We Plan To Add
+**Here's The Features That We Plan To Add (More Will Be Added Soon!)**
 - [x] 32 Bit Bootloader!
 - [x] VGA Text UI
 - [x] ~~64 Bit~~ Kernel

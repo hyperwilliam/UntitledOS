@@ -7,7 +7,7 @@ Features That We Plan To Add
 - [x] ~~64 Bit~~ Kernel
 - [ ] GUI (If You Dont Want To Use Text Based UI)
 - [ ] Command Line Works
-- [x] Interrupt Descriptor Table
+- [x] Interrupt Descriptor Table (Done Wow!)
 - [x] **"FAT12"** Header
 - [x] Works On My Old Laptop?
 - [x] I Ran Out Of Ideas

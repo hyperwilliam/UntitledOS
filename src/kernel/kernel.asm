@@ -32,7 +32,7 @@ protected_mode:
 
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "NOTICE! You Are Using An EXPERIMENTAL Version Of UntitledOS", 0
+string2: db "UntitledOS Pre-Alpha Revision 3!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
 print32:
@@ -42,6 +42,12 @@ print32:
    jnz print32
    ret
 
+print32:
+   lodsb
+   stosw
+   or al, al
+   jnz print32
+   ret
 
 ; GDT, Taken From UntitledOS
 gdt_start:

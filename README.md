@@ -1,10 +1,13 @@
 # UntitledOS: Experimental
 ## Well, Here's The **Experimental** Branch Of **My OS!**
 
-Here, We Test Things That Might Break The OS For A Bit!
-But If You Really Want... You Can Try It!
-
-Changes:
-We Made The Branch!
-
-- [ ] Goal: To Create An Interrupt Descriptor Table (IDT)
+Features That We Plan To Add
+- [x] 32 Bit Bootloader!
+- [x] VGA Text UI
+- [x] ~~64 Bit~~ Kernel
+- [ ] GUI (If You Dont Want To Use Text Based UI)
+- [ ] Command Line Works
+- [x] Interrupt Descriptor Table
+- [x] **"FAT12"** Header
+- [x] Works On My Old Laptop?
+- [x] I Ran Out Of Ideas

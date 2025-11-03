@@ -42,14 +42,7 @@ print32:
    jnz print32
    ret
 
-print32:
-   lodsb
-   stosw
-   or al, al
-   jnz print32
-   ret
-
-; GDT, Taken From UntitledOS
+; GDT, Taken From UntitledOS Legacy Branch
 gdt_start:
     gdt_null:
     dd 0x0

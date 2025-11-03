@@ -27,13 +27,14 @@ protected_mode:
    mov ah, 0x0F
    lidt [idtr]
    call print32
+   int 0x00
    jmp short $
 
 
 string: db "32 Bit Mode!!!!", 0
 string2: db "NOTICE! You Are Using An EXPERIMENTAL Version Of UntitledOS", 0
 idt: db "IDT Loaded, Very Good!", 0
-
+idt2: db "Interrupts Work, Awesome!", 0
 print32:
    lodsb
    stosw
@@ -76,13 +77,24 @@ DATA_SEG equ 0x10
 
 ; IDT Stub
 idt_start:
-
+dw isr1
+dw 0x0008
+db 0x0
+db 0x8E
+dw 0x0000
 
 idt_end:
 
 idtr:
     dw idt_end - idt_start - 1
     dd idt_start
+
+isr1:
+   mov edi, 0xB8500
+   mov esi, idt2
+   mov ah, 0x0F
+   call print32
+   iret
 
 
 bios_print:
@@ -100,4 +112,3 @@ msg2  db 'GDT Loaded!', 13, 10, 0
 xpos db 0
 ypos db 0
 times 4096-($-$$) db 0
-

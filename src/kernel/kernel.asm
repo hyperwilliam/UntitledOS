@@ -43,10 +43,10 @@ protected_mode:
    mov dx, 0xA0
    out dx, al
    call iowait
-   mov al, 0x20
+   mov al, 0x1f
    out 0x21, al
    call iowait
-   mov al, 0x30
+   mov al, 0x70
    out 0xA1, al
    call iowait
    mov al, 0x02
@@ -60,15 +60,16 @@ protected_mode:
    call iowait
    out 0xA1, al
    call iowait
-   mov al, 0xFE
+   mov al, 0xFD
    out 0x21, al
+   mov al, 0xFF
    out 0xA1, al 
    mov esi, pic
    mov edi, 0xB8500
    call print32
    mov edi, 0xB85A0
    sti
-   jmp $ ;shell isnt ready yet, also it gives a #UD Exception Not Long after enabling interrupts.
+   jmp $ ;shell isnt ready yet, but at least it works now!
 
 
 string: db "32 Bit Mode!!!!", 0
@@ -242,13 +243,37 @@ call print32
 jmp short $
 
 isr15:
-call isrs
-mov esi, errorcode15
-call print32
-jmp short $
+;call isrs
+;mov esi, errorcode15
+;call print32
+;jmp short $
+push esi
+xor eax, eax
+in al,60h
+mov ah, 0x0F
+mov [edi], ax
+add byte edi, 2
+mov al,20h
+out 20h,al
+pop esi
+iret
 
 irq0:
+mov al,20h
+out 20h,al
+iret ; we arent supposed to get this irq.
+
+irq1:
+push esi
+in al,60h
+mov ah, 0x0F
+mov si, keyint
+call print32
+mov al,20h
+out 20h,al
+pop esi
 iret
+
 
 iowait:
 push ax
@@ -257,6 +282,9 @@ out 0x80, al
 pop ax
 ret
 
+keyint: db "Keyboard Interrupt Recieved!", 0
+
+buffer times 64 db 0
 isrs:
    mov edi, 0xB8000
    mov ah, 0x7F

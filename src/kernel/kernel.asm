@@ -1,6 +1,12 @@
 org 0x8000
 bits 16
-jmp main
+jmp short main
+
+; Header (This will be used by future bootloader revisions)
+db 0x68
+db 0x64
+db 0x72
+times 32-($-$$) db 0
 
 %include "src/kernel/idt.asm"
 ; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)

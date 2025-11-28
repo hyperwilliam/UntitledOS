@@ -1,20 +1,30 @@
 org 0x8000
 bits 16
-jmp short main
 
-; Header (This will be used by future bootloader revisions)
-db 0x68
-db 0x64
-db 0x72
-times 32-($-$$) db 0
-
-%include "src/kernel/idt.asm"
-; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
+HDR32 equ 0 ; Experimental Option, Might Be Removed Eventually.
+jmp short main ; jumps past the header, making this larger or smaller will break our second stage bootloader.
+; Header, I'll Put A Lot Of Info About The Header If You Want To Use My Bootloader! (Well, My Stage 2 Bootloader...)
+; This Spells Out:
+db 0x48 ;"H"
+db 0x44 ; "D"
+db 0x52 ; "R"
+%if HDR32
+db 0x32 ; This Describes What Mode To Start In, Most Useful For x86
+%else
+db 0x16
+%endif
+db 0x86 ; Describes What Instruction Set This OS Is. Might Be Useful
+db 0x01 ; Describes The Version Of The Header.
+db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
+times 32-($-$$)
 
 bits 16
 
 main:
 
+%if HDR32
+jmp protected_mode
+%else
 mov si, msg
 call bios_print
 lgdt [gdt_descriptor]
@@ -25,18 +35,21 @@ mov eax, cr0
 or eax, 1
 mov cr0, eax
 jmp CODE_SEG:protected_mode
+%endif
+
+
 
 bits 32
 protected_mode:
-   mov edi, 0xB8320
+   mov edi, 0xB8460
    mov esi, string
    mov ah, 0x0B
    call print32
-   mov edi, 0xB83C0
+   mov edi, 0xB8500
    mov esi, string2
    mov ah, 0x1F
    call print32
-   mov edi, 0xB8460
+   mov edi, 0xB85A0
    mov esi, idt
    mov ah, 0x0F
    lidt [idtr]
@@ -71,15 +84,17 @@ protected_mode:
    mov al, 0xFF
    out 0xA1, al 
    mov esi, pic
-   mov edi, 0xB8500
+   mov edi, 0xB8640
    call print32
-   mov edi, 0xB85A0
+   mov edi, 0xB86E0
    sti
-   jmp $ ;shell isnt ready yet, but at least it works now!
+   jmp $ ;shell isnt ready yet, but at least keyboard input works now!
 
+%include "src/kernel/idt.asm"
+; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "UntitledOS Pre-Alpha Revision 5!", 0
+string2: db "UntitledOS Pre-Alpha Revision 5.1!", 0
 pic: db "PIC Initialised!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
@@ -359,7 +374,7 @@ bios_print:
    jmp bios_print
 done:
    ret
-msg db 'Stage 2 Entered, Very Good!', 13, 10, 0
+msg db 'Kernel Entered, Very Good!', 13, 10, 0
 msg2  db 'GDT Loaded!', 13, 10, 0
 xpos db 0
 ypos db 0

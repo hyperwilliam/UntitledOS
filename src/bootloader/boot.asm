@@ -3,7 +3,6 @@ bits 16
 
 jmp short INIT
 nop
-
 OEMLabel		db "BOOT    "	; Disk label
 BytesPerSector		dw 512		; Bytes per sector
 SectorsPerCluster	db 1		; Sectors per cluster
@@ -41,9 +40,19 @@ INIT:
    mov si, msg3
    call bios_print
    mov ah, 0x02    ; BIOS read sector function
-   mov al, 16       ; Read 16 sectors for the kernel
+   mov al, 4       ; Read 4 sectors
    mov ch, 0       ; Cylinder 0
    mov cl, 2       ; Sector 2 (sectors start at 1)
+   mov dh, 0       ; Head 0
+   mov dl, [bootdrive]
+   mov bx, 0x7E00  ; Load to ES:BX = 0x0000:0x8000
+
+   int 0x13        ; Call BIOS
+   jc halt        ; Jump if error (carry flag set)
+   mov ah, 0x02    ; BIOS read sector function
+   mov al, 4       ; Read 4 sectors
+   mov ch, 0       ; Cylinder 0
+   mov cl, 6       ; Sector 6 (sectors start at 1)
    mov dh, 0       ; Head 0
    mov dl, [bootdrive]
    mov bx, 0x8000  ; Load to ES:BX = 0x0000:0x8000
@@ -52,7 +61,7 @@ INIT:
    jc halt        ; Jump if error (carry flag set)
    mov si, msg4
    call bios_print
-   jmp 0x8000
+   jmp 0x7E00 ; yeah funny thing, we have a second stage bootloader now...
 
 halt:
   mov si, msg2

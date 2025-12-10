@@ -5,6 +5,30 @@ jmp main
 %include "src/kernel/idt.asm"
 main:
 
+HDR32 equ 0 ; Experimental Option, Might Be Removed Eventually.
+jmp short main ; jumps past the header, making this larger or smaller will break our second stage bootloader.
+; Header, I'll Put A Lot Of Info About The Header If You Want To Use My Bootloader! (Well, My Stage 2 Bootloader...)
+; This Spells Out:
+db 0x48 ;"H"
+db 0x44 ; "D"
+db 0x52 ; "R"
+%if HDR32
+db 0x32 ; This Describes What Mode To Start In, Most Useful For x86
+%else
+db 0x16
+%endif
+db 0x86 ; Describes What Instruction Set This OS Is. Might Be Useful
+db 0x01 ; Describes The Version Of The Header.
+db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
+times 32-($-$$) db 0
+
+bits 16
+
+main:
+
+%if HDR32
+jmp protected_mode
+%else
 mov si, msg
 call bios_print
 lgdt [gdt_descriptor]
@@ -15,18 +39,21 @@ mov eax, cr0
 or eax, 1
 mov cr0, eax
 jmp CODE_SEG:protected_mode
+%endif
+
+
 
 bits 32
 protected_mode:
-   mov edi, 0xB8320
+   mov edi, 0xB8460
    mov esi, string
    mov ah, 0x0B
    call print32
-   mov edi, 0xB83C0
+   mov edi, 0xB8500
    mov esi, string2
    mov ah, 0x1F
    call print32
-   mov edi, 0xB8460
+   mov edi, 0xB85A0
    mov esi, idt
    mov ah, 0x0F
    lidt [idtr]
@@ -34,16 +61,47 @@ protected_mode:
    mov al, 0x11
    mov dx, 0x20
    out dx, al
+   call iowait
    mov al, 0x11
    mov dx, 0xA0
    out dx, al
-   int 0x03 ; BreakPoint.
-   jmp short $
+   call iowait
+   mov al, 0x1f
+   out 0x21, al
+   call iowait
+   mov al, 0x70
+   out 0xA1, al
+   call iowait
+   mov al, 0x02
+   out 0x21, al
+   call iowait
+   mov al, 2
+   out 0xA1, al
+   call iowait
+   mov al, 1
+   out 0x21, al
+   call iowait
+   out 0xA1, al
+   call iowait
+   mov al, 0xFD
+   out 0x21, al
+   mov al, 0xFF
+   out 0xA1, al 
+   mov esi, pic
+   mov edi, 0xB8640
+   call print32
+   mov edi, 0xB86E0
+   sti
+   jmp $
+   ; call ShellInit (This, Would In Theory Start The Shell, That Still, Is Not Ready.)
 
+; -------- General Includes ---------
+%include "src/kernel/idt.asm"
+; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "UntitledOS Pre-Alpha Revision 4!", 0
-pic: db "PIC Initialised!", 0 ; Unused, Will Be Implemented Soon.
+string2: db "UntitledOS Pre-Alpha Revision 5.1!", 0
+pic: db "PIC Initialised!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
 print32:
@@ -212,12 +270,55 @@ call print32
 jmp short $
 
 isr15:
-call isrs
-mov esi, errorcode15
+;call isrs
+;mov esi, errorcode15
+;call print32
+;jmp short $
+push esi
+xor eax, eax
+in al,60h
+call ScancodeConv
+cmp al, 0xFF
+jz End
+mov ah, 0x0F
+mov [edi], ax
+add byte edi, 2
+End:
+mov al,20h
+out 20h,al
+pop esi
+iret
+
+;------------ Drivers ----------
+%include "src/kernel/drivers/ps2.inc"
+
+irq0:
+mov al,20h
+out 20h,al
+iret ; we arent supposed to get this irq.
+
+irq1:
+push esi
+in al,60h
+mov ah, 0x0F
+mov si, keyint
 call print32
-jmp short $
+mov al,20h
+out 20h,al
+pop esi
+iret
 
 
+iowait:
+push ax
+mov ax, 0x0000
+out 0x80, al
+pop ax
+ret
+
+keyint: db "Keyboard Interrupt Recieved!", 0
+
+buffer times 64 db 0
 isrs:
    mov edi, 0xB8000
    mov ah, 0x7F
@@ -286,7 +387,7 @@ bios_print:
    jmp bios_print
 done:
    ret
-msg db 'Stage 2 Entered, Very Good!', 13, 10, 0
+msg db 'Kernel Entered, Very Good!', 13, 10, 0
 msg2  db 'GDT Loaded!', 13, 10, 0
 xpos db 0
 ypos db 0

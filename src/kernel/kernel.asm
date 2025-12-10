@@ -16,7 +16,7 @@ db 0x16
 db 0x86 ; Describes What Instruction Set This OS Is. Might Be Useful
 db 0x01 ; Describes The Version Of The Header.
 db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
-times 32-($-$$)
+times 32-($-$$) db 0
 
 bits 16
 
@@ -88,8 +88,10 @@ protected_mode:
    call print32
    mov edi, 0xB86E0
    sti
-   jmp $ ;shell isnt ready yet, but at least keyboard input works now!
+   jmp $
+   ; call ShellInit (This, Would In Theory Start The Shell, That Still, Is Not Ready.)
 
+; -------- General Includes ---------
 %include "src/kernel/idt.asm"
 ; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
@@ -271,13 +273,20 @@ isr15:
 push esi
 xor eax, eax
 in al,60h
+call ScancodeConv
+cmp al, 0xFF
+jz End
 mov ah, 0x0F
 mov [edi], ax
 add byte edi, 2
+End:
 mov al,20h
 out 20h,al
 pop esi
 iret
+
+;------------ Drivers ----------
+%include "src/kernel/drivers/ps2.inc"
 
 irq0:
 mov al,20h

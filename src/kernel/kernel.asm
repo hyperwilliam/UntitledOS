@@ -1,5 +1,9 @@
 org 0x8000
 bits 16
+jmp main
+
+%include "src/kernel/idt.asm"
+main:
 
 HDR32 equ 0 ; Experimental Option, Might Be Removed Eventually.
 jmp short main ; jumps past the header, making this larger or smaller will break our second stage bootloader.

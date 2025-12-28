@@ -1,49 +1,18 @@
 org 0x8000
-bits 16
-jmp main
+bits 32
 
-%include "src/kernel/idt.asm"
-main:
 
-HDR32 equ 0 ; Experimental Option, Might Be Removed Eventually.
-jmp short main ; jumps past the header, making this larger or smaller will break our second stage bootloader.
+jmp short protected_mode ; jumps past the header, making this larger or smaller will break our second stage bootloader.
 ; Header, I'll Put A Lot Of Info About The Header If You Want To Use My Bootloader! (Well, My Stage 2 Bootloader...)
 ; This Spells Out:
 db 0x48 ;"H"
 db 0x44 ; "D"
 db 0x52 ; "R"
-%if HDR32
 db 0x32 ; This Describes What Mode To Start In, Most Useful For x86
-%else
-db 0x16
-%endif
 db 0x86 ; Describes What Instruction Set This OS Is. Might Be Useful
 db 0x01 ; Describes The Version Of The Header.
 db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
 times 32-($-$$) db 0
-
-bits 16
-
-main:
-
-%if HDR32
-jmp protected_mode
-%else
-mov si, msg
-call bios_print
-lgdt [gdt_descriptor]
-mov si, msg2
-call bios_print
-cli
-mov eax, cr0
-or eax, 1
-mov cr0, eax
-jmp CODE_SEG:protected_mode
-%endif
-
-
-
-bits 32
 protected_mode:
    mov edi, 0xB8460
    mov esi, string

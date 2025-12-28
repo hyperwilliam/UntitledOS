@@ -130,4 +130,4 @@ msg16 db "MODE DETECTED: 16-BIT", 13, 10, 0
 yes db "debuggz", 13, 10, 0
 %endif
 bootdrive db 0
-times 2048-($-$$)
+times 2048-($-$$) db 0

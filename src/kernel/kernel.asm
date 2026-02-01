@@ -69,7 +69,7 @@ protected_mode:
 ; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "UntitledOS Pre-Alpha Revision 5.1!", 0
+string2: db "UntitledOS Pre-Alpha 6", 0
 pic: db "PIC Initialised!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
@@ -239,10 +239,6 @@ call print32
 jmp short $
 
 isr15:
-;call isrs
-;mov esi, errorcode15
-;call print32
-;jmp short $
 push esi
 xor eax, eax
 in al,60h
@@ -288,7 +284,9 @@ ret
 keyint: db "Keyboard Interrupt Recieved!", 0
 
 buffer times 64 db 0
+buffercount db 0x00
 isrs:
+   cli
    mov edi, 0xB8000
    mov ah, 0x7F
    mov esi, line

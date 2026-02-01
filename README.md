@@ -11,4 +11,4 @@
 - [x] **"FAT12"** Header
 - [x] Works On My Old Laptop?
 - [x] I Ran Out Of Ideas
-- [x] Half-Working Keyboard Input
+- [x] Almost Fully Working Keyboard Input

@@ -1,16 +1,22 @@
 ; PS/2 Driver, Probably Not The Best, But It Will Work (better with the power of lookup tables!)
 bits 32
 ScancodeConv:
+push ax
+xor eax,eax
+pop ax
 cmp al, 0x2A
 jz shiftpressed
 cmp al, 0xAA
 jz shiftreleased
+cmp al, 0x36
+jz shiftpressed
+cmp al, 0xB6
+jz shiftreleased
 mov bl, [shifted]
 
 mov esi, scancode_to_ascii_map
-cmp bl, 0x01
-jz shtrue
 add esi, eax
+add si,bx
 mov al, [esi]
 
 ret
@@ -27,18 +33,14 @@ scancode_to_shifted_ascii_map:
     db 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~'
     db 0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*', 0, ' '
     times 168 db 0xff
-shifted: db 0xff
+shifted: db 0x00
 
 shiftpressed:
-mov [shifted], 0x01
+mov [shifted], 0xE2
 mov al, 0xFF
 ret
 
 shiftreleased:
 mov [shifted], 0x00
 mov al, 0xFF
-ret
-
-shtrue:
-add esi, 180
 ret

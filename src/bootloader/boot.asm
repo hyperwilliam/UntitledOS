@@ -1,92 +1,91 @@
-org 0x7c00
-bits 16
+; Declare constants for the multiboot header.
+MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
+MEMINFO  equ  1 << 1            ; provide memory map
+MBFLAGS  equ  MBALIGN | MEMINFO ; this is the Multiboot 'flag' field
+MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
+CHECKSUM equ -(MAGIC + MBFLAGS) ; checksum of above, to prove we are multiboot
+                                ; CHECKSUM + MAGIC + MBFLAGS should be Zero (0)
 
-jmp short INIT
-nop
-OEMLabel		db "BOOT    "	; Disk label
-BytesPerSector		dw 512		; Bytes per sector
-SectorsPerCluster	db 1		; Sectors per cluster
-ReservedForBoot		dw 1		; Reserved sectors for boot record
-NumberOfFats		db 2		; Number of copies of the FAT
-RootDirEntries		dw 224		; Number of entries in root dir
-					; (224 * 32 = 7168 = 14 sectors to read)
-LogicalSectors		dw 2880		; Number of logical sectors
-MediumByte		db 0F0h		; Medium descriptor byte
-SectorsPerFat		dw 9		; Sectors per FAT
-SectorsPerTrack		dw 18		; Sectors per track (36/cylinder)
-Sides			dw 2		; Number of sides/heads
-HiddenSectors		dd 0		; Number of hidden sectors
-LargeSectors		dd 0		; Number of LBA sectors
-DriveNo			dw 0		; Drive No: 0
-Signature		db 41		; Drive signature: 41 for floppy
-VolumeID		dd 00000000h	; Volume ID: any number
-VolumeLabel		db "MyBOOT     "; Volume Label: any 11 chars
-FileSystem		db "FAT12   "	; File system type: don't change!
+; Declare a multiboot header that marks the program as a kernel. These are magic
+; values that are documented in the multiboot standard. The bootloader will
+; search for this signature in the first 8 KiB of the kernel file, aligned at a
+; 32-bit boundary. The signature is in its own section so the header can be
+; forced to be within the first 8 KiB of the kernel file.
+section .multiboot
+align 4
+	dd MAGIC
+	dd MBFLAGS
+	dd CHECKSUM
 
-INIT:
-   mov [bootdrive], dl
-   xor ax, ax
-   mov ds, ax
-   mov es, ax ; recommended by redditor z3r0OS, Hope It Works!
-   cld
-   mov ah, 00h
-   mov al, 03h
-   int 10h
-   mov si, msg
-   call bios_print
-   in al, 0x92
-   or al, 2
-   out 0x92, al
-   mov si, msg3
-   call bios_print
-   mov ah, 0x02    ; BIOS read sector function
-   mov al, 4       ; Read 4 sectors
-   mov ch, 0       ; Cylinder 0
-   mov cl, 2       ; Sector 2 (sectors start at 1)
-   mov dh, 0       ; Head 0
-   mov dl, [bootdrive]
-   mov bx, 0x7E00  ; Load to ES:BX = 0x0000:0x8000
+; The multiboot standard does not define the value of the stack pointer register
+; (esp) and it is up to the kernel to provide a stack. This allocates room for a
+; small stack by creating a symbol at the bottom of it, then allocating 16384
+; bytes for it, and finally creating a symbol at the top. The stack grows
+; downwards on x86. The stack is in its own section so it can be marked nobits,
+; which means the kernel file is smaller because it does not contain an
+; uninitialized stack. The stack on x86 must be 16-byte aligned according to the
+; System V ABI standard and de-facto extensions. The compiler will assume the
+; stack is properly aligned and failure to align the stack will result in
+; undefined behavior.
+section .bss
+align 16
+stack_bottom:
+resb 16384 ; 16 KiB is reserved for stack
+stack_top:
 
-   int 0x13        ; Call BIOS
-   jc halt        ; Jump if error (carry flag set)
-   mov ah, 0x02    ; BIOS read sector function
-   mov al, 4       ; Read 4 sectors
-   mov ch, 0       ; Cylinder 0
-   mov cl, 6       ; Sector 6 (sectors start at 1)
-   mov dh, 0       ; Head 0
-   mov dl, [bootdrive]
-   mov bx, 0x8000  ; Load to ES:BX = 0x0000:0x8000
+; The linker script specifies _start as the entry point to the kernel and the
+; bootloader will jump to this position once the kernel has been loaded. It
+; doesn't make sense to return from this function as the bootloader is gone.
+; Declare _start as a function symbol with the given symbol size.
+section .text
+global _start:function (_start.end - _start)
+_start:
+	; The bootloader has loaded us into 32-bit protected mode on a x86
+	; machine. Interrupts are disabled. Paging is disabled. The processor
+	; state is as defined in the multiboot standard. The kernel has full
+	; control of the CPU. The kernel can only make use of hardware features
+	; and any code it provides as part of itself. There's no printf
+	; function, unless the kernel provides its own <stdio.h> header and a
+	; printf implementation. There are no security restrictions, no
+	; safeguards, no debugging mechanisms, only what the kernel provides
+	; itself. It has absolute and complete power over the
+	; machine.
 
-   int 0x13        ; Call BIOS
-   jc halt        ; Jump if error (carry flag set)
-   mov si, msg4
-   call bios_print
-   jmp 0x7E00 ; yeah funny thing, we have a second stage bootloader now...
+	; To set up a stack, we set the esp register to point to the top of our
+	; stack (as it grows downwards on x86 systems). This is necessarily done
+	; in assembly as languages such as C cannot function without a stack.
+	mov esp, stack_top
 
-halt:
-  mov si, msg2
-  call bios_print
-  jmp $
+	; This is a good place to initialize crucial processor state before the
+	; high-level kernel is entered. It's best to minimize the early
+	; environment where crucial features are offline. Note that the
+	; processor is not fully initialized yet: Features such as floating
+	; point instructions and instruction set extensions are not initialized
+	; yet. The GDT should be loaded here. Paging should be enabled here.
+	; C++ features such as global constructors and exceptions will require
+	; runtime support to work as well.
 
-msg   db 'Bootloader Works, Very Good!', 13, 10, 0
-msg2  db 'Disk Error, Guess It Didnt Work For Very Long, heh!', 13, 10, 0
-msg3  db 'A20 Line Enabled', 13, 10, 0
+	; Enter the high-level kernel. The ABI requires the stack is 16-byte
+	; aligned at the time of the call instruction (which afterwards pushes
+	; the return pointer of size 4 bytes). The stack was originally 16-byte
+	; aligned above and we've since pushed a multiple of 16 bytes to the
+	; stack since (pushed 0 bytes so far) and the alignment is thus
+	; preserved and the call is well defined.
+        ; note, that if you are building on Windows, C functions may have "_" prefix in assembly: _kernel_main
+	extern kernel_main
+	call kernel_main
 
-msg4   db 'Stage 2 Loaded, Very Good', 13, 10, 0
-bootdrive db 0
-
-
-bios_print:
-   lodsb
-   or al, al  ;zero=end of str
-   jz done    ;GET OUT
-   mov ah, 0x0E
-   mov bh, 0
-   int 0x10
-   jmp bios_print
-done:
-   ret
-
-   times 510-($-$$) db 0
-   db 0x55
-   db 0xAA
+	; If the system has nothing more to do, put the computer into an
+	; infinite loop. To do that:
+	; 1) Disable interrupts with cli (clear interrupt enable in eflags).
+	;    They are already disabled by the bootloader, so this is not needed.
+	;    Mind that you might later enable interrupts and return from
+	;    kernel_main (which is sort of nonsensical to do).
+	; 2) Wait for the next interrupt to arrive with hlt (halt instruction).
+	;    Since they are disabled, this will lock up the computer.
+	; 3) Jump to the hlt instruction if it ever wakes up due to a
+	;    non-maskable interrupt occurring or due to system management mode.
+	cli
+.lockup:	hlt
+	jmp .lockup
+.end:

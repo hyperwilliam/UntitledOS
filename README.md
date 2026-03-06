@@ -2,7 +2,7 @@
 ## Well, Here's My "Operating System's" Source Code For Those Who Want It, This Time Written In "C"
 
 **Here's The Features That We Plan To Add (More Will Be Added Soon!)**
-- [ ] 32 Bit Bootloader!
+- [x] 32 Bit Bootloader! (this OS Supports multiboot, so it should probably work with most premade bootloaders)
 - [x] VGA Text UI
 - [x] ~~64 Bit~~ Kernel
 - [ ] GUI (If You Dont Want To Use Text Based UI)

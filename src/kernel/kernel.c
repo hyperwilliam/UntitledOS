@@ -83,17 +83,34 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y)
 	const size_t index = y * VGA_WIDTH + x;
 	terminal_buffer[index] = vga_entry(c, color);
 }
-
-void terminal_putchar(char c) 
+void terminal_scroll() 
 {
-	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-	if (++terminal_column == VGA_WIDTH) {
-		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT)
-			terminal_row = 0;
+	for (size_t y = 0; y < VGA_HEIGHT; y++) {
+		for (size_t x = 0; x < VGA_WIDTH; x++) {
+			const size_t index = y * VGA_WIDTH + x;
+			terminal_buffer[index] = terminal_buffer[index + 80];
+                        terminal_buffer[index + 80] = 0x0000;
+		}
 	}
 }
-
+void terminal_overflow(void) {
+	if (++terminal_column >= VGA_WIDTH) {
+		terminal_column = 0;
+		if (++terminal_row >= VGA_HEIGHT) {
+			terminal_row = 79;
+}
+	}
+}
+void terminal_putchar(char c) 
+{ 
+        if (c == '\n') {
+	  terminal_column = 80;
+	terminal_overflow();
+        } else {
+	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
+	terminal_overflow();
+        }
+}
 void terminal_write(const char* data, size_t size) 
 {
 	for (size_t i = 0; i < size; i++)
@@ -105,11 +122,14 @@ void terminal_writestring(const char* data)
 	terminal_write(data, strlen(data));
 }
 
-void kernel_main(void) 
+void kernel_main(void)
 {
 	/* Initialize terminal interface */
 	terminal_initialize();
 
 	/* Newline support is left as an exercise. */
-	terminal_writestring("Hello, kernel World!\n");
+        terminal_color = vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLUE);
+	terminal_writestring("UntitledOS Alpha 1 Preview!\n");
+        terminal_color = vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+	terminal_writestring("Back And Written In 'C'\n");
 }

@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
 #error "You are not using a cross-compiler, you will most certainly run into trouble"
@@ -31,6 +30,24 @@ enum vga_color {
 	VGA_COLOR_LIGHT_BROWN = 14,
 	VGA_COLOR_WHITE = 15,
 };
+
+typedef struct {
+	uint16_t    isr_low;      // The lower 16 bits of the ISR's address
+	uint16_t    kernel_cs;    // The GDT segment selector that the CPU will load into CS before calling the ISR
+	uint8_t     reserved;     // Set to zero
+	uint8_t     attributes;   // Type and attributes; see the IDT page
+	uint16_t    isr_high;     // The higher 16 bits of the ISR's address
+} __attribute__((packed)) idt_entry_t;
+
+__attribute__((aligned(0x10))) 
+static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
+
+typedef struct {
+	uint16_t	limit;
+	uint32_t	base;
+} __attribute__((packed)) idtr_t;
+
+static idtr_t idtr;
 
 static inline uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) 
 {

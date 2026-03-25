@@ -72,6 +72,7 @@ _start:
 	; stack since (pushed 0 bytes so far) and the alignment is thus
 	; preserved and the call is well defined.
         ; note, that if you are building on Windows, C functions may have "_" prefix in assembly: _kernel_main
+lgdt [gdt_descriptor]
 	extern kernel_main
 	call kernel_main
 
@@ -86,6 +87,32 @@ _start:
 	; 3) Jump to the hlt instruction if it ever wakes up due to a
 	;    non-maskable interrupt occurring or due to system management mode.
 	cli
-.lockup:	hlt
-	jmp .lockup
+.hang:	hlt
+	jmp .hang
 .end:
+gdt_start:
+    gdt_null:
+    dd 0x0
+    dd 0x0
+    
+    gdt_code:
+    dw 0xffff    ; Limit (bits 0-15)
+    dw 0x0       ; Base (bits 0-15)
+    db 0x0       ; Base (bits 16-23)
+    db 10011010b ; Flags
+    db 11001111b ; Flags + Limit (bits 16-19)
+    db 0x0       ; Base (bits 24-31)
+    
+    gdt_data:
+    dw 0xffff
+    dw 0x0
+    db 0x0
+    db 10010010b
+    db 11001111b
+    db 0x0
+    
+gdt_end:
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1  ; GDT size
+    dd gdt_start                 ; GDT address

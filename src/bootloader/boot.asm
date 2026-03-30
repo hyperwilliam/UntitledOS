@@ -28,6 +28,8 @@ INIT:
    xor ax, ax
    mov ds, ax
    mov es, ax ; recommended by redditor z3r0OS, Hope It Works!
+   mov sp, 0x7BFF ; initialising the stack is probably for the best.
+   mov ss, ax
    cld
    mov ah, 00h
    mov al, 03h

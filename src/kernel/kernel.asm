@@ -14,15 +14,13 @@ db 0x01 ; Describes The Version Of The Header.
 db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
 times 32-($-$$) db 0
 protected_mode:
-   mov edi, 0xB8460
+mov [ypos], 5
    mov esi, string
    mov ah, 0x0B
    call print32
-   mov edi, 0xB8500
    mov esi, string2
    mov ah, 0x1F
    call print32
-   mov edi, 0xB85A0
    mov esi, idt
    mov ah, 0x0F
    lidt [idtr]
@@ -57,9 +55,7 @@ protected_mode:
    mov al, 0xFF
    out 0xA1, al 
    mov esi, pic
-   mov edi, 0xB8640
    call print32
-   mov edi, 0xB86E0
    sti
    jmp $
    ; call ShellInit (This, Would In Theory Start The Shell, That Still, Is Not Ready.)
@@ -69,16 +65,45 @@ protected_mode:
 ; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "UntitledOS Pre-Alpha 6", 0
+string2: db "UntitledOS Pre-Alpha 6.1!", 0
 pic: db "PIC Initialised!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
+buffer times 64 db 0
+count db 0
+xpos db 0
+ypos db 0
+
 print32:
-   lodsb
-   stosw
-   or al, al
-   jnz print32
-   ret
+push edi
+mov edi, 0xB8000
+push eax
+movzx eax, byte [ypos]
+xor edx, edx
+mov dl, 160
+mul dx
+add edi, eax
+movzx eax, byte [xpos]
+mov dl, 2
+mul dx
+add edi, eax
+pop eax
+.print:
+lodsb
+or al, al
+jz .inc
+cmp al, 0xFE
+jz .alt
+stosw
+jmp .print
+.inc:
+inc [ypos]
+pop edi
+ret
+.alt:
+inc [xpos]
+pop edi
+ret
 
 ; GDT, Taken From UntitledOS Legacy Branch
 gdt_start:
@@ -161,9 +186,11 @@ call print32
 jmp short $
 
 isr8:
-call isrs
+mov ah, 0x4C
 mov esi, errorcode8
 call print32
+cli
+hlt
 jmp short $
 
 isr9:
@@ -245,15 +272,24 @@ in al,60h
 call ScancodeConv
 cmp al, 0xFF
 jz End
+pop esi
+push esi
 mov ah, 0x0F
-mov [edi], ax
-add byte edi, 2
+call calcCHR
 End:
 mov al,20h
 out 20h,al
 pop esi
 iret
 
+calcCHR:
+mov [chrBuffer], al
+mov esi, chrBuffer
+call print32
+ret
+
+chrBuffer: db 33
+db 0xfe
 ;------------ Drivers ----------
 %include "src/kernel/drivers/ps2.inc"
 
@@ -263,48 +299,52 @@ out 20h,al
 iret ; we arent supposed to get this irq.
 
 irq1:
-push esi
-in al,60h
-mov ah, 0x0F
-mov si, keyint
-call print32
 mov al,20h
 out 20h,al
-pop esi
 iret
 
 
 iowait:
 push ax
-mov ax, 0x0000
+mov al, 0x0000
 out 0x80, al
 pop ax
 ret
 
-keyint: db "Keyboard Interrupt Recieved!", 0
-
-buffer times 64 db 0
-buffercount db 0x00
 isrs:
    cli
-   mov edi, 0xB8000
+   mov [ypos], 0
+   mov [xpos], 0
    mov ah, 0x7F
    mov esi, line
    call print32
    call drawerr
    mov ah, 0x4F
-   mov edi, 0xB80A0
+   mov [ypos], 1
    mov esi, err
    call print32
    mov esi, err2
-   add byte edi, 50
    call print32
+   dec [ypos]
+   mov [xpos], 11
    ret
 
-line: db "FATAL ERROR!                                                                   ", 0
+line: db "FATAL ERROR!                                                                    ", 0
 err: db "UntitledOS Ran Into A Problem, And It Needs To Reboot.", 0 ;
 err2: db "ERROR CODE:", 0
 unhandlederr: db "UNRECOGNISED", 0
+
+drawerr:
+   mov ah, 0x44
+   mov esi, line
+   call print32
+   add byte [counter], -1
+   jnz drawerr
+   mov ah, 0x77
+   mov esi, line
+   call print32
+   ret
+counter: db 23
 
 brkp: db "Breakpoint Interrupt Received!", 0
 errorcode0: db "#DE", 0
@@ -328,34 +368,4 @@ errorcode13: db "#XM", 0
 errorcode14: db "#VE", 0
 errorcode15: db "Control Protection", 0
 reserved:   db "Reserved Interrupt!", 0
-
-drawerr:
-   mov ah, 0x44
-   mov esi, line
-   call print32
-   add byte [counter], -1
-   jnz drawerr
-   mov ah, 0x77
-   mov esi, line
-   call print32
-   ret
-counter: db 23
-
-
-
-
-bios_print:
-   lodsb
-   or al, al  ;zero=end of str
-   jz done    ;GET OUT
-   mov ah, 0x0E
-   mov bh, 0
-   int 0x10
-   jmp bios_print
-done:
-   ret
-msg db 'Kernel Entered, Very Good!', 13, 10, 0
-msg2  db 'GDT Loaded!', 13, 10, 0
-xpos db 0
-ypos db 0
 times 4096-($-$$) db 0

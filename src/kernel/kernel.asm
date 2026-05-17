@@ -1,59 +1,28 @@
 org 0x8000
-bits 16
-jmp main
+bits 32
 
-%include "src/kernel/idt.asm"
-main:
 
-HDR32 equ 0 ; Experimental Option, Might Be Removed Eventually.
-jmp short main ; jumps past the header, making this larger or smaller will break our second stage bootloader.
+jmp short protected_mode ; jumps past the header, making this larger or smaller will break our second stage bootloader.
 ; Header, I'll Put A Lot Of Info About The Header If You Want To Use My Bootloader! (Well, My Stage 2 Bootloader...)
 ; This Spells Out:
 db 0x48 ;"H"
 db 0x44 ; "D"
 db 0x52 ; "R"
-%if HDR32
 db 0x32 ; This Describes What Mode To Start In, Most Useful For x86
-%else
-db 0x16
-%endif
 db 0x86 ; Describes What Instruction Set This OS Is. Might Be Useful
 db 0x01 ; Describes The Version Of The Header.
 db 0x00 ; Rest Of These Are Reserved For Future Additions To Header,
 times 32-($-$$) db 0
-
-bits 16
-
-main:
-
-%if HDR32
-jmp protected_mode
-%else
-mov si, msg
-call bios_print
-lgdt [gdt_descriptor]
-mov si, msg2
-call bios_print
-cli
-mov eax, cr0
-or eax, 1
-mov cr0, eax
-jmp CODE_SEG:protected_mode
-%endif
-
-
-
-bits 32
 protected_mode:
-   mov edi, 0xB8460
+mov eax, 0x0008
+mov es, ax
+mov [ypos], 5
    mov esi, string
    mov ah, 0x0B
    call print32
-   mov edi, 0xB8500
    mov esi, string2
    mov ah, 0x1F
    call print32
-   mov edi, 0xB85A0
    mov esi, idt
    mov ah, 0x0F
    lidt [idtr]
@@ -88,9 +57,13 @@ protected_mode:
    mov al, 0xFF
    out 0xA1, al 
    mov esi, pic
-   mov edi, 0xB8640
    call print32
-   mov edi, 0xB86E0
+   mov esi, cmd
+   call print32
+   mov esi, chrPrompt
+   call print32
+   dec [ypos]
+   mov [xpos], 2
    sti
    jmp $
    ; call ShellInit (This, Would In Theory Start The Shell, That Still, Is Not Ready.)
@@ -100,45 +73,50 @@ protected_mode:
 ; %include "src/kernel/shell.asm" (Shell Isnt Ready Yet!)
 
 string: db "32 Bit Mode!!!!", 0
-string2: db "UntitledOS Pre-Alpha Revision 5.1!", 0
+string2: db "UntitledOS Alpha 1!", 0
 pic: db "PIC Initialised!", 0
 idt: db "IDT Loaded, Very Good!", 0
 idt2: db "Interrupts Work, Awesome!", 0
+cmd: db "Command Prompt Ready!"
+buffer times 64 db 0
+count db 0
+xpos db 0
+ypos db 0
+
 print32:
-   lodsb
-   stosw
-   or al, al
-   jnz print32
-   ret
+push edi
+mov edi, 0xB8000
+push eax
+movzx eax, byte [ypos]
+xor edx, edx
+mov dl, 160
+mul dx
+add edi, eax
+movzx eax, byte [xpos]
+mov dl, 2
+mul dx
+mov [value], eax
+add edi, eax
+pop eax
+.print:
+lodsb
+or al, al
+jz .inc
+cmp al, 0xFE
+jz .alt
+stosw
+jmp .print
+.inc:
+inc [ypos]
+pop edi
+ret
+.alt:
+inc [xpos]
+pop edi
+ret
 
-; GDT, Taken From UntitledOS Legacy Branch
-gdt_start:
-    gdt_null:
-    dd 0x0
-    dd 0x0
-    
-    gdt_code:
-    dw 0xffff    ; Limit (bits 0-15)
-    dw 0x0       ; Base (bits 0-15)
-    db 0x0       ; Base (bits 16-23)
-    db 10011010b ; Flags
-    db 11001111b ; Flags + Limit (bits 16-19)
-    db 0x0       ; Base (bits 24-31)
-    
-    gdt_data:
-    dw 0xffff
-    dw 0x0
-    db 0x0
-    db 10010010b
-    db 11001111b
-    db 0x0
-    
-gdt_end:
 
-gdt_descriptor:
-    dw gdt_end - gdt_start - 1  ; GDT size
-    dd gdt_start                 ; GDT address
-
+value: dd 0x00
 ; Constants
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
@@ -192,9 +170,11 @@ call print32
 jmp short $
 
 isr8:
-call isrs
+mov ah, 0x4C
 mov esi, errorcode8
 call print32
+cli
+hlt
 jmp short $
 
 isr9:
@@ -270,25 +250,74 @@ call print32
 jmp short $
 
 isr15:
-;call isrs
-;mov esi, errorcode15
-;call print32
-;jmp short $
 push esi
 xor eax, eax
 in al,60h
 call ScancodeConv
 cmp al, 0xFF
 jz End
+pop esi
+push esi
 mov ah, 0x0F
-mov [edi], ax
-add byte edi, 2
+cmp al, 0x0A
+jz .enter
+call calcCHR
+jmp End
+.enter:
+inc [ypos]
+mov [xpos], 0
+mov esi, buffer
+call compareSTR
+mov esi, chrPrompt
+call print32
+dec [ypos]
+mov [xpos], 2
 End:
 mov al,20h
 out 20h,al
 pop esi
 iret
 
+calcCHR:
+mov [chrBuffer], al
+mov esi, chrBuffer
+call print32
+ret
+
+chrBuffer: db 33
+db 0xfe
+
+chrPrompt: db "> ", 0x00
+
+compareSTR:
+push edi
+push eax
+.loop:
+mov edi, helloCmd
+lodsb
+cmp [edi], al
+pushf
+cmp al, 0x00
+jz .end
+popf
+jmp .loop
+.end:
+popf
+jz .valid
+mov esi, invalid
+call print32
+jmp .ret
+.valid:
+mov esi, helloMsg
+call print32
+.ret:
+pop eax
+pop edi
+ret
+
+invalid: db "Invalid Command!", 0x00
+helloMsg: db "Hello, World!", 0x00
+helloCmd: db "hello", 0x00
 ;------------ Drivers ----------
 %include "src/kernel/drivers/ps2.inc"
 
@@ -298,46 +327,52 @@ out 20h,al
 iret ; we arent supposed to get this irq.
 
 irq1:
-push esi
-in al,60h
-mov ah, 0x0F
-mov si, keyint
-call print32
 mov al,20h
 out 20h,al
-pop esi
 iret
 
 
 iowait:
 push ax
-mov ax, 0x0000
+mov al, 0x0000
 out 0x80, al
 pop ax
 ret
 
-keyint: db "Keyboard Interrupt Recieved!", 0
-
-buffer times 64 db 0
 isrs:
-   mov edi, 0xB8000
+   cli
+   mov [ypos], 0
+   mov [xpos], 0
    mov ah, 0x7F
    mov esi, line
    call print32
    call drawerr
    mov ah, 0x4F
-   mov edi, 0xB80A0
+   mov [ypos], 1
    mov esi, err
    call print32
    mov esi, err2
-   add byte edi, 50
    call print32
+   dec [ypos]
+   mov [xpos], 11
    ret
 
-line: db "FATAL ERROR!                                                                   ", 0
+line: db "FATAL ERROR!                                                                    ", 0
 err: db "UntitledOS Ran Into A Problem, And It Needs To Reboot.", 0 ;
 err2: db "ERROR CODE:", 0
 unhandlederr: db "UNRECOGNISED", 0
+
+drawerr:
+   mov ah, 0x44
+   mov esi, line
+   call print32
+   add byte [counter], -1
+   jnz drawerr
+   mov ah, 0x77
+   mov esi, line
+   call print32
+   ret
+counter: db 23
 
 brkp: db "Breakpoint Interrupt Received!", 0
 errorcode0: db "#DE", 0
@@ -361,34 +396,4 @@ errorcode13: db "#XM", 0
 errorcode14: db "#VE", 0
 errorcode15: db "Control Protection", 0
 reserved:   db "Reserved Interrupt!", 0
-
-drawerr:
-   mov ah, 0x44
-   mov esi, line
-   call print32
-   add byte [counter], -1
-   jnz drawerr
-   mov ah, 0x77
-   mov esi, line
-   call print32
-   ret
-counter: db 23
-
-
-
-
-bios_print:
-   lodsb
-   or al, al  ;zero=end of str
-   jz done    ;GET OUT
-   mov ah, 0x0E
-   mov bh, 0
-   int 0x10
-   jmp bios_print
-done:
-   ret
-msg db 'Kernel Entered, Very Good!', 13, 10, 0
-msg2  db 'GDT Loaded!', 13, 10, 0
-xpos db 0
-ypos db 0
 times 4096-($-$$) db 0

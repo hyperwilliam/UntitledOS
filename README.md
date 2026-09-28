@@ -12,3 +12,5 @@
 - [x] Works On My Old Laptop?
 - [x] I Ran Out Of Ideas
 - [x] Almost Fully Working Keyboard Input
+
+also, here's a work in progress re-write: https://github.com/hyperwilliam/untitled-kernel
